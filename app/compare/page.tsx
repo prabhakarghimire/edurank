@@ -26,10 +26,8 @@ export default function ComparePage() {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col">
-            <Navbar />
-
-            <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="min-h-screen bg-black text-white pt-24 pb-12">
+            <div className="container mx-auto px-4">
                 <div className="mb-8 text-center">
                     <h1 className="text-3xl md:text-4xl font-bold mb-4">Compare Institutions</h1>
                     <p className="text-zinc-400 max-w-2xl mx-auto">
@@ -70,7 +68,7 @@ export default function ComparePage() {
                         <p className="text-sm text-zinc-600">Search above to add institutions to the comparison.</p>
                     </div>
                 )}
-            </main>
+            </div>
 
             <Footer />
         </div>

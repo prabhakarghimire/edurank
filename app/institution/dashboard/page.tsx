@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { LayoutDashboard, FileEdit, MessageSquare, Settings, LogOut, Building2, ClipboardList } from 'lucide-react';
 import StatsOverview from '@/components/dashboard/StatsOverview';
@@ -9,19 +9,29 @@ import InquiryManager from '@/components/dashboard/InquiryManager';
 import { mockInstitutions } from '@/lib/data';
 import Link from 'next/link';
 
-export default function InstitutionDashboard() {
-    const [activeTab, setActiveTab] = useState('overview');
+import { Suspense } from 'react';
+
+function DashboardContent() {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
+
+    const activeTab = searchParams.get('tab') || 'overview';
+
+    const handleTabChange = (tab: string) => {
+        router.push(`${pathname}?tab=${tab}`);
+    };
 
     // Simulate logged-in institution (Tribhuvan University)
     const institution = mockInstitutions[0];
 
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col">
-            <div className="flex flex-1 container mx-auto px-4 py-8 gap-8">
+        <div className="min-h-screen bg-black text-white flex flex-col pt-20">
+            <div className="flex flex-col md:flex-row flex-1 container mx-auto px-4 py-8 gap-8">
                 {/* Sidebar */}
                 <aside className="w-full md:w-64 flex-shrink-0 space-y-8">
                     <div className="flex items-center gap-3 px-4 py-3 bg-zinc-900/50 rounded-xl border border-zinc-800">
-                        <img src={institution.image} alt={institution.name} className="w-10 h-10 rounded-full object-cover" />
+                        <img src={institution.image} alt={institution.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                         <div className="overflow-hidden">
                             <div className="font-bold text-sm truncate">{institution.name}</div>
                             <div className="text-xs text-zinc-500 truncate">{institution.email || 'admin@tu.edu.np'}</div>
@@ -32,35 +42,35 @@ export default function InstitutionDashboard() {
                         <Button
                             variant="ghost"
                             className={`w-full justify-start ${activeTab === 'overview' ? 'bg-blue-600/10 text-blue-500' : 'text-zinc-400 hover:text-white'}`}
-                            onClick={() => setActiveTab('overview')}
+                            onClick={() => handleTabChange('overview')}
                         >
                             <LayoutDashboard className="h-4 w-4 mr-3" /> Overview
                         </Button>
                         <Button
                             variant="ghost"
                             className={`w-full justify-start ${activeTab === 'inquiries' ? 'bg-blue-600/10 text-blue-500' : 'text-zinc-400 hover:text-white'}`}
-                            onClick={() => setActiveTab('inquiries')}
+                            onClick={() => handleTabChange('inquiries')}
                         >
                             <ClipboardList className="h-4 w-4 mr-3" /> Inquiries
                         </Button>
                         <Button
                             variant="ghost"
                             className={`w-full justify-start ${activeTab === 'edit' ? 'bg-blue-600/10 text-blue-500' : 'text-zinc-400 hover:text-white'}`}
-                            onClick={() => setActiveTab('edit')}
+                            onClick={() => handleTabChange('edit')}
                         >
                             <FileEdit className="h-4 w-4 mr-3" /> Edit Profile
                         </Button>
                         <Button
                             variant="ghost"
                             className={`w-full justify-start ${activeTab === 'reviews' ? 'bg-blue-600/10 text-blue-500' : 'text-zinc-400 hover:text-white'}`}
-                            onClick={() => setActiveTab('reviews')}
+                            onClick={() => handleTabChange('reviews')}
                         >
                             <MessageSquare className="h-4 w-4 mr-3" /> Reviews
                         </Button>
                         <Button
                             variant="ghost"
                             className={`w-full justify-start ${activeTab === 'settings' ? 'bg-blue-600/10 text-blue-500' : 'text-zinc-400 hover:text-white'}`}
-                            onClick={() => setActiveTab('settings')}
+                            onClick={() => handleTabChange('settings')}
                         >
                             <Settings className="h-4 w-4 mr-3" /> Settings
                         </Button>
@@ -118,7 +128,7 @@ export default function InstitutionDashboard() {
                                     <Button
                                         variant="link"
                                         className="w-full mt-2 text-blue-500"
-                                        onClick={() => setActiveTab('inquiries')}
+                                        onClick={() => handleTabChange('inquiries')}
                                     >
                                         View All Inquiries
                                     </Button>
@@ -177,5 +187,13 @@ export default function InstitutionDashboard() {
                 </main>
             </div>
         </div>
+    );
+}
+
+export default function InstitutionDashboard() {
+    return (
+        <Suspense fallback={<div className="min-h-screen bg-black text-white flex items-center justify-center">Loading Dashboard...</div>}>
+            <DashboardContent />
+        </Suspense>
     );
 }

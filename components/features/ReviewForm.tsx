@@ -28,6 +28,7 @@ export default function ReviewForm({ institutionId, institutionName }: ReviewFor
     const [comment, setComment] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [showForm, setShowForm] = useState(false);
 
     const handleSliderChange = (id: string, value: number[]) => {
         setRatings(prev => ({ ...prev, [id]: value[0] }));
@@ -62,7 +63,7 @@ export default function ReviewForm({ institutionId, institutionName }: ReviewFor
                     Thank you for reviewing <strong>{institutionName}</strong>. Your feedback helps other students and parents make informed decisions.
                 </p>
                 <Button
-                    onClick={() => setIsSubmitted(false)}
+                    onClick={() => { setIsSubmitted(false); setShowForm(true); }}
                     variant="outline"
                     className="mt-6 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900"
                 >
@@ -72,9 +73,38 @@ export default function ReviewForm({ institutionId, institutionName }: ReviewFor
         );
     }
 
+    if (!showForm) {
+        return (
+            <div className="text-center py-8">
+                <h3 className="text-xl font-bold text-white mb-2">Have you studied here?</h3>
+                <p className="text-zinc-400 mb-6 max-w-md mx-auto">
+                    Share your experience to help future students make better choices. It only takes 2 minutes!
+                </p>
+                <Button
+                    onClick={() => setShowForm(true)}
+                    size="lg"
+                    className="bg-white text-black hover:bg-zinc-200 font-bold px-8"
+                >
+                    Write a Review
+                </Button>
+            </div>
+        );
+    }
+
     return (
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 md:p-8">
-            <h2 className="text-2xl font-bold mb-2">Write a Review</h2>
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 md:p-8 animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Write a Review</h2>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowForm(false)}
+                    className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"
+                >
+                    Cancel
+                </Button>
+            </div>
+
             <p className="text-zinc-500 mb-8">Rate <strong>{institutionName}</strong> on the following parameters (1-10).</p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 mb-8">

@@ -1,330 +1,331 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo, Suspense } from 'react';
 import InstitutionCard from '@/components/features/InstitutionCard';
-import { Institution } from '@/lib/data';
-import { Search, SlidersHorizontal, ArrowUpDown } from 'lucide-react';
+import { Institution, mockInstitutions } from '@/lib/data';
+import { Search, SlidersHorizontal, ArrowUpDown, Filter, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
-import { calculateMatchScore, defaultFilters, FilterState, sortInstitutions } from '@/lib/ranking';
-
-// Augmented type for display
-interface ScoredInstitution extends Institution {
-    matchScore: number;
-}
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from '@/components/ui/badge';
 
 function SearchContent() {
     const searchParams = useSearchParams();
-    const typeParam = searchParams.get('type');
-    const queryParam = searchParams.get('q') || '';
+    const router = useRouter();
 
-    const [allInstitutions, setAllInstitutions] = useState<Institution[]>([]);
-    const [loading, setLoading] = useState(true);
+    // URL Params
+    const typeParam = searchParams.get('type') || 'ALL';
+    const queryParam = searchParams.get('q') || '';
+    const destParam = searchParams.get('dest') || '';
+    const maxFeeParam = searchParams.get('maxFee');
 
     // Filter State
-    const [filters, setFilters] = useState<FilterState & { destinations: string[], programs: string[] }>({
-        ...defaultFilters,
-        query: queryParam,
-        type: typeParam || null,
-        minBudget: 0,
-        maxBudget: 1000000,
-        destinations: [],
-        programs: []
-    });
-
+    const [searchQuery, setSearchQuery] = useState(queryParam);
+    const [selectedType, setSelectedType] = useState<string>(typeParam);
+    const [feeRange, setFeeRange] = useState([0, maxFeeParam ? parseInt(maxFeeParam) : 50000]); // Monthly fee max
+    const [selectedDestinations, setSelectedDestinations] = useState<string[]>(destParam ? [destParam] : []);
+    const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+    const [selectedBoards, setSelectedBoards] = useState<string[]>([]);
+    const [sortBy, setSortBy] = useState('score_desc');
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
+    // Update state when URL params change
     useEffect(() => {
-        async function fetchData() {
-            setLoading(true);
-            try {
-                const res = await fetch('/api/institutions'); // Mock API
-                const data = await res.json();
-                setAllInstitutions(data);
-            } catch (error) {
-                console.error("Failed to fetch institutions", error);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetchData();
-    }, []);
-
-    // Sync URL params
-    useEffect(() => {
-        setFilters(prev => ({ ...prev, type: typeParam || null, query: queryParam }));
+        if (typeParam) setSelectedType(typeParam);
+        if (queryParam) setSearchQuery(queryParam);
     }, [typeParam, queryParam]);
 
-    // Derived Logic: Score & Sort
-    const processedInstitutions = useMemo(() => {
-        if (!allInstitutions.length) return [];
+    // Derived Constants based on Type
+    const isConsultancy = selectedType === 'CONSULTANCY';
+    const isSchool = selectedType === 'SCHOOL' || selectedType === 'COLLEGE' || selectedType === 'PRESCHOOL';
 
-        let result = allInstitutions.map(inst => ({
-            ...inst,
-            matchScore: calculateMatchScore(inst, filters)
-        }));
+    // Options
+    const LOCATIONS = ['Kathmandu', 'Lalitpur', 'Bhaktapur', 'Pokhara', 'Chitwan'];
+    const DESTINATIONS = ['Australia', 'USA', 'UK', 'Canada', 'Japan', 'South Korea', 'Europe'];
+    const BOARDS = ['NEB', 'Cambridge', 'IB', 'CBSE', 'TU', 'PU', 'KU'];
+    const FEATURES = ['Transport', 'Hostel', 'Swimming Pool', 'Labs', 'Cafeteria', 'Football Ground', 'AC Classrooms'];
+    const CONSULTANCY_SERVICES = ['Visa Guidance', 'SOP Writing', 'Interview Prep', 'Scholarship Help', 'PTE', 'IELTS'];
 
-        // Filter by strict criteria (hard filters)
-        result = result.filter(inst => {
-            const matchesSearch = !filters.query || inst.name.toLowerCase().includes(filters.query.toLowerCase());
-            const matchesType = !filters.type || filters.type === 'ALL' || inst.type === filters.type;
-            const matchesCity = !filters.city || inst.city.toLowerCase().includes(filters.city.toLowerCase());
+    // Filtering Logic
+    const filteredInstitutions = useMemo(() => {
+        let result = mockInstitutions;
 
-            // Note: Budget is often soft-filtered by score, but user asks for a filter. 
-            // In smart ranking, usually we just rank, but let's do soft strictness or just rely on ranking.
-            // For now, let's keep it strictly comprehensive: show everything, but score heavily.
-            // OR strict filter? User requirement says "Filters: Budget".
-            // Let's strict filter if maxBudget < 1000000 (default max)
-            const annualFees = inst.feeDetails?.annual || inst.fees;
-            const matchesBudget = annualFees >= filters.minBudget && annualFees <= filters.maxBudget;
+        // 1. Text Search
+        if (searchQuery) {
+            const lowerQ = searchQuery.toLowerCase();
+            result = result.filter(i =>
+                i.name.toLowerCase().includes(lowerQ) ||
+                i.city.toLowerCase().includes(lowerQ) ||
+                i.features.some(f => f.toLowerCase().includes(lowerQ))
+            );
+        }
 
-            // New Filters
-            const matchesDestinations = filters.destinations.length === 0 ||
-                (inst.destinations && filters.destinations.some(d => inst.destinations?.includes(d)));
+        // 2. Type Filter
+        if (selectedType && selectedType !== 'ALL') {
+            result = result.filter(i => i.type === selectedType);
+        }
 
-            const matchesPrograms = filters.programs.length === 0 ||
-                (inst.programs && filters.programs.some(p => inst.programs?.includes(p)));
+        // 3. Fee Filter (Schools only mostly, or consultancies with service fees if we parsed them)
+        // Assuming 'fees' in data is monthly tuition for schools
+        if (isSchool) {
+            result = result.filter(i => i.fees <= feeRange[1]);
+        }
 
-            // Facilities & Affiliation
-            const matchesFacilities = filters.facilities.length === 0 ||
-                filters.facilities.every(f => inst.features.includes(f));
+        // 4. Destinations (Consultancy)
+        if (isConsultancy && selectedDestinations.length > 0) {
+            result = result.filter(i =>
+                i.destinations && selectedDestinations.some(d => i.destinations?.includes(d))
+            );
+        }
 
-            const matchesAffiliation = filters.affiliation.length === 0 ||
-                (inst.affiliation && filters.affiliation.some(a => inst.affiliation?.includes(a)));
+        // 5. Boards (Schools)
+        if (isSchool && selectedBoards.length > 0) {
+            result = result.filter(i =>
+                i.affiliation && selectedBoards.some(b => i.affiliation?.includes(b))
+            );
+        }
 
+        // 6. Features (Generic)
+        if (selectedFeatures.length > 0) {
+            result = result.filter(i =>
+                selectedFeatures.every(f => i.features.includes(f) || i.services?.includes(f))
+            );
+        }
 
-            return matchesSearch && matchesType && matchesCity && matchesBudget && matchesDestinations && matchesPrograms && matchesFacilities && matchesAffiliation;
-        });
-
-        // Sort by Match Score descending, then by Tier
+        // Sorting
         return result.sort((a, b) => {
-            // Tier Logic: Premium first is handled by score? Or explicit?
-            // "Search: Weighted sorting to show Premium first."
-            if (a.tier === 'PREMIUM' && b.tier !== 'PREMIUM') return -1;
-            if (a.tier !== 'PREMIUM' && b.tier === 'PREMIUM') return 1;
+            const scoreA = a.eduRankScore || 0;
+            const scoreB = b.eduRankScore || 0;
 
-            return b.matchScore - a.matchScore;
+            switch (sortBy) {
+                case 'score_desc':
+                    return scoreB - scoreA;
+                case 'reviews_desc':
+                    return b.reviews - a.reviews;
+                case 'fee_asc':
+                    return a.fees - b.fees;
+                case 'fee_desc':
+                    return b.fees - a.fees;
+                default:
+                    return scoreB - scoreA;
+            }
         });
-    }, [allInstitutions, filters]);
+    }, [searchQuery, selectedType, feeRange, selectedDestinations, selectedFeatures, selectedBoards, sortBy, isConsultancy, isSchool]);
 
-    const handleFilterToggle = (key: 'facilities' | 'affiliation' | 'destinations' | 'programs', value: string) => {
-        setFilters(prev => {
-            // @ts-ignore
-            const list = prev[key] as string[];
-            const exists = list.includes(value);
-            return {
-                ...prev,
-                [key]: exists ? list.filter(item => item !== value) : [...list, value]
-            };
-        });
+    // Handlers
+    const toggleDestination = (dest: string) => {
+        setSelectedDestinations(prev =>
+            prev.includes(dest) ? prev.filter(d => d !== dest) : [...prev, dest]
+        );
     };
 
-    const FACILITIES_LIST = ['Library', 'Labs', 'Sports', 'Transport', 'Cafeteria', 'Hostel', 'Swimming Pool', 'Visa Guidance', 'Job Placement'];
-    const AFFILIATIONS_LIST = ['NEB', 'TU', 'KU', 'PU', 'Foreign'];
+    const toggleFeature = (feat: string) => {
+        setSelectedFeatures(prev =>
+            prev.includes(feat) ? prev.filter(f => f !== feat) : [...prev, feat]
+        );
+    };
 
-    // Dynamic lists based on available data? Or hardcoded top ones?
-    // Let's hardcode popular ones for now for better UX, or derive? Deriving is better but let's stick to simple first.
-    const DESTINATIONS_LIST = ['USA', 'Australia', 'UK', 'Canada', 'Japan', 'South Korea', 'New Zealand'];
-    const PROGRAMS_LIST = ['IELTS', 'PTE', 'SAT', 'TOEFL', 'Python', 'Java', 'Web Design', 'Digital Marketing'];
+    const toggleBoard = (board: string) => {
+        setSelectedBoards(prev =>
+            prev.includes(board) ? prev.filter(b => b !== board) : [...prev, board]
+        );
+    };
+
+    const clearFilters = () => {
+        setSelectedDestinations([]);
+        setSelectedFeatures([]);
+        setSelectedBoards([]);
+        setFeeRange([0, 50000]);
+        setSearchQuery('');
+        router.push('/search'); // Clear URL params
+    };
 
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col">
-            {/* Header */}
-            <div className="bg-zinc-900/50 sticky top-16 z-30 backdrop-blur-md border-b border-zinc-800">
-                <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row gap-4 items-center justify-between">
-                    <h1 className="text-xl font-bold flex items-center gap-2">
-                        {loading ? 'Searching...' : `${processedInstitutions.length} Results`}
-                        {filters.city && <span className="text-zinc-500 font-normal text-sm">in {filters.city}</span>}
-                    </h1>
-
-                    <div className="flex w-full md:w-auto gap-2">
-                        <div className="relative flex-1 md:w-80">
-                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
-                            <input
-                                type="text"
-                                placeholder="Refine search..."
-                                className="w-full bg-black border border-zinc-700 rounded-md py-2 pl-10 pr-4 text-sm focus:border-blue-500 outline-none"
-                                value={filters.query}
-                                onChange={(e) => setFilters({ ...filters, query: e.target.value })}
-                            />
+        <div className="min-h-screen bg-zinc-950 text-white pb-20 pt-16">
+            {/* Header / Top Bar */}
+            <div className="bg-zinc-950 border-b border-zinc-800 sticky top-16 z-40 shadow-lg">
+                <div className="container mx-auto px-4 lg:px-6 py-4">
+                    <div className="flex flex-col gap-4">
+                        <div className="flex gap-4 items-center">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-3 h-5 w-5 text-zinc-500" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by name, location, or facility..."
+                                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/50 outline-none transition-all"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+                            <Button
+                                variant="outline"
+                                className="lg:hidden border-zinc-800 bg-zinc-900"
+                                onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
+                            >
+                                <Filter className="h-4 w-4 mr-2" />
+                                Filters
+                            </Button>
                         </div>
-                        <Button
-                            variant="outline"
-                            className="md:hidden border-zinc-700"
-                            onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)}
-                        >
-                            <SlidersHorizontal className="h-4 w-4" />
-                        </Button>
+
+                        {/* Type Tabs */}
+                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                            {['ALL', 'PRESCHOOL', 'SCHOOL', 'COLLEGE', 'CONSULTANCY', 'TRAINING_CENTER'].map(type => (
+                                <button
+                                    key={type}
+                                    onClick={() => setSelectedType(type)}
+                                    className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors border ${selectedType === type
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700'
+                                        }`}
+                                >
+                                    {type.replace('_', ' ')}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="container mx-auto px-4 py-8 flex gap-8 relative items-start">
-
-                {/* Sidebar Filters (Desktop) */}
-                <aside className={`w-80 flex-shrink-0 space-y-8 absolute md:relative z-40 bg-black md:bg-transparent p-6 md:p-0 min-h-screen md:min-h-0 border-r md:border-r-0 border-zinc-800 transition-transform duration-300 ${isMobileFiltersOpen ? 'translate-x-0 left-0 top-0' : '-translate-x-full md:translate-x-0'}`}>
-                    <div className="flex items-center justify-between md:hidden mb-6">
-                        <h2 className="text-lg font-bold">Filters</h2>
-                        <Button variant="ghost" size="sm" onClick={() => setIsMobileFiltersOpen(false)}>Close</Button>
+            <div className="container mx-auto px-4 lg:px-6 py-8 flex gap-8">
+                {/* Sidebar (Desktop) */}
+                <aside className={`w-72 flex-shrink-0 space-y-8 absolute lg:static z-40 bg-zinc-950 lg:bg-transparent p-6 lg:p-0 lg:pt-4 inset-0 h-screen lg:h-auto overflow-y-auto lg:overflow-visible transition-transform duration-300 border-r border-zinc-800 lg:border-none ${isMobileFiltersOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+                    <div className="lg:hidden flex justify-between items-center mb-6">
+                        <h2 className="text-xl font-bold">Filters</h2>
+                        <Button variant="ghost" onClick={() => setIsMobileFiltersOpen(false)}>Close</Button>
                     </div>
 
-                    {/* Programs/Courses Filter (Important for Consultancies/Training) */}
-                    <div className="space-y-3">
-                        <h3 className="font-semibold text-sm text-zinc-300">Courses / Tests</h3>
-                        <div className="space-y-2">
-                            {PROGRAMS_LIST.map((item) => (
-                                <div key={item} className="flex items-center gap-2">
-                                    <Checkbox
-                                        id={`prog-${item}`}
-                                        checked={filters.programs.includes(item)}
-                                        onCheckedChange={() => handleFilterToggle('programs', item)}
-                                    />
-                                    <label htmlFor={`prog-${item}`} className="text-sm text-zinc-400 cursor-pointer select-none">
-                                        {item}
-                                    </label>
-                                </div>
+                    {/* Active Filters Summary */}
+                    {(selectedDestinations.length > 0 || selectedFeatures.length > 0) && (
+                        <div className="flex flex-wrap gap-2 pb-6 border-b border-zinc-900">
+                            {[...selectedDestinations, ...selectedFeatures, ...selectedBoards].map(f => (
+                                <Badge key={f} variant="secondary" className="bg-zinc-900 hover:bg-zinc-800 text-zinc-300 gap-1 pl-2 border border-zinc-800">
+                                    {f} <span className="cursor-pointer font-bold text-zinc-500 hover:text-white" onClick={() => { toggleDestination(f); toggleFeature(f); toggleBoard(f); }}>×</span>
+                                </Badge>
                             ))}
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-zinc-800" />
-
-                    {/* Destinations Filter */}
-                    <div className="space-y-3">
-                        <h3 className="font-semibold text-sm text-zinc-300">Destinations</h3>
-                        <div className="space-y-2">
-                            {DESTINATIONS_LIST.map((item) => (
-                                <div key={item} className="flex items-center gap-2">
-                                    <Checkbox
-                                        id={`dest-${item}`}
-                                        checked={filters.destinations.includes(item)}
-                                        onCheckedChange={() => handleFilterToggle('destinations', item)}
-                                    />
-                                    <label htmlFor={`dest-${item}`} className="text-sm text-zinc-400 cursor-pointer select-none">
-                                        {item}
-                                    </label>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-zinc-800" />
-
-                    {/* Budget Filter */}
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                            <h3 className="font-semibold text-sm text-zinc-300">Budget Limit</h3>
-                            <span className="text-xs text-blue-400 font-mono">
-                                {filters.maxBudget >= 1000000 ? 'Any' : `Under ${filters.maxBudget.toLocaleString()}`}
-                            </span>
-                        </div>
-                        <Slider
-                            defaultValue={[1000000]}
-                            max={1000000}
-                            step={50000}
-                            value={[filters.maxBudget]}
-                            onValueChange={(val) => setFilters({ ...filters, maxBudget: val[0] })}
-                        />
-                        <div className="flex justify-between text-xs text-zinc-600 font-mono">
-                            <span>0</span>
-                            <span>10L+</span>
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-zinc-800" />
-
-                    {/* Affiliation Filter */}
-                    <div className="space-y-3">
-                        <h3 className="font-semibold text-sm text-zinc-300">Affiliation</h3>
-                        <div className="space-y-2">
-                            {AFFILIATIONS_LIST.map((item) => (
-                                <div key={item} className="flex items-center gap-2">
-                                    <Checkbox
-                                        id={`aff-${item}`}
-                                        checked={filters.affiliation.includes(item)}
-                                        onCheckedChange={() => handleFilterToggle('affiliation', item)}
-                                    />
-                                    <label htmlFor={`aff-${item}`} className="text-sm text-zinc-400 cursor-pointer select-none">
-                                        {item}
-                                    </label>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-zinc-800" />
-
-                    {/* Facilities Filter */}
-                    <div className="space-y-3">
-                        <h3 className="font-semibold text-sm text-zinc-300">Facilities / Services</h3>
-                        <div className="space-y-2">
-                            {FACILITIES_LIST.map((item) => (
-                                <div key={item} className="flex items-center gap-2">
-                                    <Checkbox
-                                        id={`fac-${item}`}
-                                        checked={filters.facilities.includes(item)}
-                                        onCheckedChange={() => handleFilterToggle('facilities', item)}
-                                    />
-                                    <label htmlFor={`fac-${item}`} className="text-sm text-zinc-400 cursor-pointer select-none">
-                                        {item}
-                                    </label>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    <Button
-                        variant="secondary"
-                        className="w-full mt-8"
-                        onClick={() => setFilters({ ...defaultFilters, type: filters.type, destinations: [], programs: [] })}
-                    >
-                        Reset Filters
-                    </Button>
-                </aside>
-
-                {/* Main Results */}
-                <main className="flex-1">
-                    {loading ? (
-                        <div className="grid grid-cols-1 gap-6">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="h-64 bg-zinc-900/50 rounded-xl animate-pulse"></div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-6">
-                            {processedInstitutions.map((inst) => (
-                                <div key={inst.id} className="relative group">
-                                    <InstitutionCard institution={inst} />
-                                    {/* Match Score Badge */}
-                                    <div className="absolute top-4 right-4 z-10 bg-black/80 backdrop-blur border border-zinc-700 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-xl flex items-center gap-1">
-                                        <div className={`w-2 h-2 rounded-full ${inst.matchScore > 80 ? 'bg-green-500' : inst.matchScore > 50 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
-                                        {inst.matchScore}% Match
-                                    </div>
-
-                                </div>
-                            ))}
-                            {processedInstitutions.length === 0 && (
-                                <div className="col-span-full text-center py-20 bg-zinc-900/30 border border-dashed border-zinc-800 rounded-xl">
-                                    <p className="text-zinc-500">No institutions match your strict filters.</p>
-                                    <Button variant="link" onClick={() => setFilters({ ...filters, maxBudget: 1000000, facilities: [], affiliation: [], destinations: [], programs: [] })}>
-                                        Clear strict filters
-                                    </Button>
-                                </div>
-                            )}
+                            <Button variant="link" className="text-xs text-blue-400 p-0 h-auto" onClick={clearFilters}>Clear All</Button>
                         </div>
                     )}
+
+                    {/* Consultancy Filters */}
+                    {isConsultancy && (
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider">Destinations</h3>
+                            <div className="space-y-2">
+                                {DESTINATIONS.map(dest => (
+                                    <div key={dest} className="flex items-center space-x-2">
+                                        <Checkbox id={dest} checked={selectedDestinations.includes(dest)} onCheckedChange={() => toggleDestination(dest)} />
+                                        <label htmlFor={dest} className="text-sm text-zinc-400 leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                                            {dest}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* School Filters */}
+                    {isSchool && (
+                        <>
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider">Boards / Affiliation</h3>
+                                <div className="space-y-2">
+                                    {BOARDS.map(board => (
+                                        <div key={board} className="flex items-center space-x-2">
+                                            <Checkbox id={board} checked={selectedBoards.includes(board)} onCheckedChange={() => toggleBoard(board)} />
+                                            <label htmlFor={board} className="text-sm text-zinc-400 leading-none cursor-pointer">
+                                                {board}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 border-t border-zinc-900 pt-6">
+                                <div className="flex justify-between">
+                                    <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider">Monthly Fee</h3>
+                                    <span className="text-xs text-blue-400">Max: {feeRange[1].toLocaleString()}</span>
+                                </div>
+                                <Slider
+                                    defaultValue={[50000]}
+                                    max={100000}
+                                    step={1000}
+                                    value={[feeRange[1]]}
+                                    onValueChange={(val) => setFeeRange([0, val[0]])}
+                                    className="py-4"
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    {/* Generic Filters */}
+                    <div className="space-y-4 border-t border-zinc-900 pt-6">
+                        <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider">{isConsultancy ? 'Services' : 'Facilities'}</h3>
+                        <div className="space-y-2">
+                            {(isConsultancy ? CONSULTANCY_SERVICES : FEATURES).map(feat => (
+                                <div key={feat} className="flex items-center space-x-2">
+                                    <Checkbox id={feat} checked={selectedFeatures.includes(feat)} onCheckedChange={() => toggleFeature(feat)} />
+                                    <label htmlFor={feat} className="text-sm text-zinc-400 leading-none cursor-pointer">
+                                        {feat}
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </aside>
+
+                {/* Results Feed */}
+                <main className="flex-1">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                        <h1 className="text-xl font-bold flex items-center gap-2">
+                            {filteredInstitutions.length > 0 ? (
+                                <>Top matches for your preferences <Badge variant="outline" className="ml-2 border-blue-500/50 text-blue-400">{filteredInstitutions.length}</Badge></>
+                            ) : (
+                                "No matches found"
+                            )}
+                        </h1>
+
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-zinc-500">Sort by:</span>
+                            <Select value={sortBy} onValueChange={setSortBy}>
+                                <SelectTrigger className="w-[180px] bg-zinc-900 border-zinc-700 text-sm h-9">
+                                    <SelectValue placeholder="Sort by" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-zinc-900 border-zinc-800">
+                                    <SelectItem value="score_desc">EduRank Score (High)</SelectItem>
+                                    <SelectItem value="reviews_desc">Most Reviewed</SelectItem>
+                                    <SelectItem value="fee_asc">Fees (Low to High)</SelectItem>
+                                    <SelectItem value="fee_desc">Fees (High to Low)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        {filteredInstitutions.map((inst) => (
+                            <InstitutionCard key={inst.id} institution={inst} />
+                        ))}
+                        {filteredInstitutions.length === 0 && (
+                            <div className="col-span-full py-20 text-center bg-zinc-900/40 rounded-xl border border-dashed border-zinc-800">
+                                <Trophy className="h-12 w-12 text-zinc-700 mx-auto mb-4" />
+                                <h3 className="text-lg font-medium text-zinc-300">No institutions found</h3>
+                                <p className="text-zinc-500 max-w-sm mx-auto mt-2">Try adjusting your filters or search for a different keyword.</p>
+                                <Button onClick={clearFilters} variant="outline" className="mt-6 border-zinc-700">
+                                    Clear all filters
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </main>
             </div>
-
         </div>
     );
 }
 
 export default function SearchPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen bg-black text-white flex items-center justify-center">Loading...</div>}>
+        <Suspense fallback={<div className="min-h-screen bg-black text-white flex items-center justify-center">Loading EduRank Marketplace...</div>}>
             <SearchContent />
         </Suspense>
     );

@@ -9,9 +9,10 @@ import { Send, CheckCircle } from 'lucide-react';
 interface InquiryFormProps {
     institutionId: string;
     institutionName: string;
+    title?: string;
 }
 
-export default function InquiryForm({ institutionId, institutionName }: InquiryFormProps) {
+export default function InquiryForm({ institutionId, institutionName, title }: InquiryFormProps) {
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,7 +51,7 @@ export default function InquiryForm({ institutionId, institutionName }: InquiryF
     return (
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
             <h3 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                <Send className="h-5 w-5 text-blue-500" /> Admission Inquiry
+                <Send className="h-5 w-5 text-blue-500" /> {title || 'Admission Inquiry'}
             </h3>
             <p className="text-sm text-zinc-400 mb-6">
                 Interested in this institution? Send an inquiry directly to their admissions office.
