@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Institution } from '@/lib/data';
-import { Star, MapPin, Trophy, CheckCircle, ArrowRight, ShieldCheck, CalendarClock } from 'lucide-react';
+import { Star, MapPin, Trophy, CheckCircle, ArrowRight, ShieldCheck, CalendarClock, Globe, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface InstitutionCardProps {
@@ -53,16 +53,22 @@ export default function InstitutionCard({ institution, rank }: InstitutionCardPr
                     </span>
                 </div>
 
-                {/* Premium Badge */}
-                {isPremium && (
-                    <div className="absolute top-3 right-3">
+                {/* Premium / Top Choice Badges */}
+                <div className="absolute top-3 right-3 flex flex-col gap-2 items-end">
+                    {rank === 1 && (
+                        <span className="bg-blue-600 text-white px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-lg flex items-center gap-1">
+                            <Trophy className="h-3 w-3" /> Top Choice
+                        </span>
+                    )}
+                    {isPremium && (
                         <span className="bg-gradient-to-r from-yellow-400 to-yellow-600 text-black px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-lg">
                             Promoted
                         </span>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 {/* Floating Score (Marketplace Style) */}
+                {/* ... score logic ... */}
                 <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-white dark:bg-zinc-950 p-1.5 pr-3 rounded-lg shadow-lg border border-zinc-100 dark:border-zinc-800">
                     <div className={`flex items-center justify-center w-8 h-8 rounded-md font-bold text-sm ${scoreBg} ${scoreColor}`}>
                         {score}
@@ -145,22 +151,31 @@ export default function InstitutionCard({ institution, rank }: InstitutionCardPr
                 </div>
 
                 {/* CTA Buttons */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                    <Link href={`/institution/${institution.id}`} className="w-full">
-                        <Button variant="outline" className="w-full text-xs h-9 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800">
-                            View Profile
-                        </Button>
-                    </Link>
-                    {isConsultancy ? (
-                        <Link href={`/institution/${institution.id}#book`} className="w-full">
-                            <Button size="sm" className="w-full text-xs h-9 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-blue-500/20 shadow-md">
-                                Free Counseling
+                <div className="flex flex-col gap-2 pt-1">
+                    <div className="grid grid-cols-2 gap-2">
+                        <Link href={`/institution/${institution.id}`} className="w-full">
+                            <Button variant="outline" className="w-full text-xs h-9 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                                View Profile
                             </Button>
                         </Link>
-                    ) : (
-                        <Link href={`/compare?add=${institution.id}`} className="w-full">
-                            <Button size="sm" className="w-full text-xs h-9 bg-zinc-900 dark:bg-white text-white dark:text-black hover:opacity-90 font-semibold">
-                                Compare
+                        {isConsultancy ? (
+                            <Link href={institution.website || '#'} target="_blank" className="w-full">
+                                <Button variant="outline" className="w-full text-xs h-9 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 flex items-center gap-1">
+                                    <Globe className="h-3 w-3" /> Website
+                                </Button>
+                            </Link>
+                        ) : (
+                            <Link href={`/compare?add=${institution.id}`} className="w-full">
+                                <Button size="sm" className="w-full text-xs h-9 bg-zinc-900 dark:bg-white text-white dark:text-black hover:opacity-90 font-semibold">
+                                    Compare
+                                </Button>
+                            </Link>
+                        )}
+                    </div>
+                    {isConsultancy && (
+                        <Link href={`/institution/${institution.id}#book`} className="w-full">
+                            <Button size="sm" className="w-full text-xs h-9 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-blue-500/20 shadow-md flex items-center justify-center gap-2">
+                                <Search className="h-3 w-3" /> Contact Consultancy
                             </Button>
                         </Link>
                     )}

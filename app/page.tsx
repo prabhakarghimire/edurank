@@ -32,7 +32,7 @@ export default function Home() {
     .slice(0, 10);
 
   return (
-    <main className="bg-black min-h-screen">
+    <main className="bg-background min-h-screen">
       <Hero />
       <LiveRankings
         schools={topSchools}

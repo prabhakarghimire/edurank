@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Menu, X, School, Search, ChevronDown, Globe, GraduationCap, Laptop, Scale } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import { ThemeToggle } from './ThemeToggle';
 
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -26,7 +25,7 @@ export default function Navbar() {
     };
 
     return (
-        <header className="fixed top-0 inset-x-0 h-16 bg-black border-b border-white/10 z-[100]">
+        <header className="fixed top-0 inset-x-0 h-16 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/50 z-[100]">
             <div className="container mx-auto px-4 h-full flex items-center justify-between">
                 {/* Logo */}
                 <Link href="/" onClick={handleLogoClick} className="flex items-center gap-2 group">
@@ -129,7 +128,6 @@ export default function Navbar() {
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-3">
-                        <ThemeToggle />
                         <Link href="/institution/claim">
                             <Button variant="ghost" size="sm" className="text-zinc-400 hover:text-white">
                                 For Institutions
@@ -154,7 +152,7 @@ export default function Navbar() {
 
             {/* Mobile Menu */}
             {isMenuOpen && (
-                <div className="md:hidden absolute top-16 left-0 right-0 bg-black border-b border-zinc-800 p-4 space-y-4 shadow-xl animate-in slide-in-from-top-2">
+                <div className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border p-4 space-y-4 shadow-xl animate-in slide-in-from-top-2">
                     <Link href="/" className="block text-sm font-medium text-zinc-400 hover:text-white">
                         Home
                     </Link>
