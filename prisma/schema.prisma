@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// enum Role {
+//   USER
+//   ADMIN
+//   SUPER_ADMIN
+// }
+
+// enum InstitutionType {
+//   PRESCHOOL
+//   SCHOOL
+//   COLLEGE
+//   UNIVERSITY
+// }
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          String    @default("USER") // Role
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  reviews       Review[]
+  bookmarks     Bookmark[]
+  claims        ClaimRequest[]
+}
+
+model Institution {
+  id            String          @id @default(cuid())
+  name          String
+  slug          String          @unique
+  type          String          // InstitutionType
+  address       String
+  city          String
+  // coordinates Float[]         // [lat, lng]
+  coordinates   String?   // Store as "lat,lng"
+  phone         String?
+  email         String?
+  website       String?
+  foundedYear   Int?
+  
+  // Design / Media
+  logo          String?
+  coverImage    String?
+  // gallery       String[]
+  gallery       String?   // Store as JSON string
+
+  // Academic Info
+  affiliation   String?         // NEB, TU, KU, CBSE, etc.
+  // programs      String[]        // Science, Management, Grade 1-10, PG
+  programs      String?   // Store as JSON string
+  
+  // Facilities (stored as a list of strings for simplicity, or relation if complex)
+  // facilities    String[] 
+  facilities    String?   // Store as JSON string
+
+  // Verification & Tier
+  isVerified    Boolean         @default(false)
+  tier          String          @default("FREE") // FREE, PREMIUM, SPONSORED
+
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  reviews       Review[]
+  feeStructure  FeeStructure?
+  bookmarks     Bookmark[]
+  claims        ClaimRequest[]
+}
+
+model Review {
+  id            String      @id @default(cuid())
+  userId        String
+  institutionId String
+  
+  // 10 Pillars of Rating (Parent Decision Framework)
+  rating_academic     Int     @default(0) // 1-5
+  rating_teaching     Int     @default(0)
+  rating_safety       Int     @default(0)
+  rating_facilities   Int     @default(0)
+  rating_extra        Int     @default(0) // Holistic/Extracurricular
+  rating_communication Int    @default(0)
+  rating_value        Int     @default(0)
+  rating_happiness    Int     @default(0) // Child Happiness
+  rating_transport    Int     @default(0)
+  rating_overall      Int     @default(0) // Calculated average or separate input
+
+  comment       String?
+  isVerified    Boolean     @default(false) // Verified Parent/Student badge
+  status        String      @default("PENDING") // PENDING, APPROVED, REJECTED
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user          User        @relation(fields: [userId], references: [id])
+  institution   Institution @relation(fields: [institutionId], references: [id])
+}
+
+model FeeStructure {
+  id            String      @id @default(cuid())
+  institutionId String      @unique
+  
+  admissionFee  Int?
+  monthlyFeeMin Int?
+  monthlyFeeMax Int?
+  annualFee     Int?
+  transportFee  Int?
+  currency      String      @default("NPR")
+  
+  lastUpdated   DateTime    @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+}
+
+model Bookmark {
+  id            String      @id @default(cuid())
+  userId        String
+  institutionId String
+  createdAt     DateTime    @default(now())
+
+  user          User        @relation(fields: [userId], references: [id])
+  institution   Institution @relation(fields: [institutionId], references: [id])
+
+  @@unique([userId, institutionId])
+}
+
+model ClaimRequest {
+  id            String      @id @default(cuid())
+  institutionId String
+  userId        String
+  status        String      @default("PENDING") // PENDING, APPROVED, REJECTED
+  // documents     String[]
+  documents     String?   // Store as JSON string
+  createdAt     DateTime    @default(now())
+
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
+}
