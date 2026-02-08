@@ -59,7 +59,22 @@ export default function InstitutionDetail({ institution }: InstitutionDetailProp
                                 </div>
                                 <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white">{institution.name}</h1>
 
-                                <div className="flex flex-col sm:flex-row sm:items-center text-zinc-300 gap-4 text-sm md:text-base">
+                                <div className="flex flex-wrap gap-4 text-sm text-zinc-400 mt-2">
+                                    {institution.phone && (
+                                        <div className="flex items-center gap-1.5">
+                                            <Phone className="h-4 w-4 text-blue-400" />
+                                            <span>{institution.phone}</span>
+                                        </div>
+                                    )}
+                                    {institution.email && (
+                                        <div className="flex items-center gap-1.5">
+                                            <Mail className="h-4 w-4 text-blue-400" />
+                                            <span>{institution.email}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row sm:items-center text-zinc-300 gap-4 text-sm md:text-base mt-4">
                                     <div className="flex items-center gap-1.5 hover:text-white transition-colors">
                                         <MapPin className="h-4 w-4 text-zinc-500" />
                                         {institution.address}, {institution.city}
@@ -296,11 +311,26 @@ function FeesCard({ institution }: { institution: Institution }) {
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-blue-500 to-purple-500"></div>
             <h3 className="text-lg font-bold text-white mb-4">Fee Structure</h3>
-            <div className="flex items-baseline gap-1 mb-2">
-                <span className="text-3xl font-bold text-white">NPR {institution.fees.toLocaleString()}</span>
-                <span className="text-sm text-zinc-500">/ estimated</span>
+
+            <div className="space-y-4 mb-6">
+                <div>
+                    <span className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Monthly Fee</span>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold text-white">NPR {institution.feeDetails?.monthly.toLocaleString() ?? institution.fees / 12}</span>
+                        <span className="text-xs text-zinc-500">/ mo</span>
+                    </div>
+                </div>
+                <div>
+                    <span className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Admission Fee</span>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-xl font-bold text-white">NPR {institution.feeDetails?.admission.toLocaleString() ?? 'Varies'}</span>
+                        <span className="text-xs text-zinc-500">/ one-time</span>
+                    </div>
+                </div>
             </div>
-            <p className="text-xs text-zinc-500 mb-6">Fees may vary by grade/program.</p>
+
+            <p className="text-xs text-zinc-500 mb-6 border-t border-zinc-800 pt-4">Estimated annual: NPR {institution.fees.toLocaleString()}</p>
+
             <Link href="#inquiry-form" className="block w-full">
                 <Button variant="outline" className="w-full border-zinc-700 hover:bg-zinc-800 text-zinc-200">
                     Request Detailed Breakdown

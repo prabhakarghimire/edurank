@@ -147,7 +147,8 @@ export async function fetchInstitutions(): Promise<Institution[]> {
                 isVerified: true,
                 image: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?q=80&w=800&auto=format&fit=crop',
                 description: description || 'No description available.',
-                phone,
+                phone: phone || 'N/A',
+                email: `info@${slug}.edu.np`, // Placeholder email
                 website: website !== '—' ? website : undefined,
                 eduRankScore: 70 + Math.floor(Math.random() * 25), // Random score for demo
             };
@@ -186,7 +187,12 @@ export async function getInstitutionsServer(): Promise<Institution[]> {
                 address: area,
                 city: area.split(',').pop()?.trim() || 'Kathmandu',
                 fees: monthlyFee * 12,
-                feeDetails: { admission: admissionFee, monthly: monthlyFee, annual: monthlyFee * 12, others: 0 },
+                feeDetails: {
+                    admission: admissionFee,
+                    monthly: monthlyFee,
+                    annual: monthlyFee * 12,
+                    others: 0
+                },
                 features: facilityStr?.split(',').map((f: string) => f.trim()) || [],
                 affiliation: curriculumStr?.split(',').map((c: string) => c.trim()) || [],
                 rating: 4.5,
@@ -194,7 +200,8 @@ export async function getInstitutionsServer(): Promise<Institution[]> {
                 isVerified: true,
                 image: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?q=80&w=800&auto=format&fit=crop',
                 description: description || '',
-                phone,
+                phone: phone || 'N/A',
+                email: `info@${slug}.edu.np`, // Placeholder email
                 website: website !== '—' ? website : undefined,
                 eduRankScore: 85,
             };
