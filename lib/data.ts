@@ -92,6 +92,122 @@ const consultancyBreakdown = (success: number, reviews: number, xp: number) => (
     "Completeness": 10
 });
 
+/**
+ * Fetches institutions from /schools.json and maps them to the Institution interface.
+ */
+export async function fetchInstitutions(): Promise<Institution[]> {
+    try {
+        const response = await fetch('/schools.json');
+        if (!response.ok) {
+            throw new Error('Failed to fetch school data');
+        }
+        const rawData: any[][] = await response.json();
+
+        // Map the JSON array of arrays to the Institution interface
+        const dynamicSchools: Institution[] = rawData.map((item, index) => {
+            const [
+                name,
+                area,
+                monthlyFeeStr,
+                admissionFeeStr,
+                curriculumStr,
+                facilityStr,
+                website,
+                phone,
+                description,
+                _unused
+            ] = item;
+
+            // Generate a slug from the name
+            const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+            // Parse fees (crude extraction of first number)
+            const monthlyFee = parseInt(monthlyFeeStr?.replace(/[^0-9]/g, '') || '0');
+            const admissionFee = parseInt(admissionFeeStr?.replace(/[^0-9]/g, '') || '0');
+
+            return {
+                id: `dynamic-${index}`,
+                name,
+                slug,
+                type: 'SCHOOL', // Default to SCHOOL as per json content
+                tier: 'FREE',
+                address: area,
+                city: area.split(',').pop()?.trim() || 'Kathmandu',
+                fees: monthlyFee * 12, // Approximate annual fee
+                feeDetails: {
+                    admission: admissionFee,
+                    monthly: monthlyFee,
+                    annual: monthlyFee * 12,
+                    others: 0
+                },
+                features: facilityStr?.split(',').map((f: string) => f.trim()) || [],
+                affiliation: curriculumStr?.split(',').map((c: string) => c.trim()) || [],
+                rating: 4.0 + (Math.random() * 1.0), // Random rating for demo
+                reviews: Math.floor(Math.random() * 100),
+                isVerified: true,
+                image: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?q=80&w=800&auto=format&fit=crop',
+                description: description || 'No description available.',
+                phone,
+                website: website !== '—' ? website : undefined,
+                eduRankScore: 70 + Math.floor(Math.random() * 25), // Random score for demo
+            };
+        });
+
+        return dynamicSchools;
+    } catch (error) {
+        console.error('Error fetching dynamic schools:', error);
+        throw error;
+    }
+}
+
+/**
+ * Server-side version of fetching institutions (reads from filesystem).
+ */
+export async function getInstitutionsServer(): Promise<Institution[]> {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const filePath = path.join(process.cwd(), 'public', 'schools.json');
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const rawData: any[][] = JSON.parse(fileContent);
+
+        const dynamicSchools: Institution[] = rawData.map((item, index) => {
+            const [name, area, monthlyFeeStr, admissionFeeStr, curriculumStr, facilityStr, website, phone, description] = item;
+            const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            const monthlyFee = parseInt(monthlyFeeStr?.replace(/[^0-9]/g, '') || '0');
+            const admissionFee = parseInt(admissionFeeStr?.replace(/[^0-9]/g, '') || '0');
+
+            return {
+                id: `dynamic-${index}`,
+                name,
+                slug,
+                type: 'SCHOOL',
+                tier: 'FREE',
+                address: area,
+                city: area.split(',').pop()?.trim() || 'Kathmandu',
+                fees: monthlyFee * 12,
+                feeDetails: { admission: admissionFee, monthly: monthlyFee, annual: monthlyFee * 12, others: 0 },
+                features: facilityStr?.split(',').map((f: string) => f.trim()) || [],
+                affiliation: curriculumStr?.split(',').map((c: string) => c.trim()) || [],
+                rating: 4.5,
+                reviews: 10,
+                isVerified: true,
+                image: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?q=80&w=800&auto=format&fit=crop',
+                description: description || '',
+                phone,
+                website: website !== '—' ? website : undefined,
+                eduRankScore: 85,
+            };
+        });
+
+        const otherMocks = mockInstitutions.filter(inst => inst.type !== 'SCHOOL');
+        return [...dynamicSchools, ...otherMocks].sort((a, b) => (b.eduRankScore || 0) - (a.eduRankScore || 0));
+    } catch (error) {
+        console.error('getInstitutionsServer error:', error);
+        return mockInstitutions;
+    }
+}
+
 export const mockInstitutions: Institution[] = [
     // --- UNIVERSITIES & COLLEGES ---
     {

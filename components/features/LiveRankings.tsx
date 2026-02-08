@@ -1,31 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Institution } from '@/lib/data';
+import { useInstitutions } from '@/lib/hooks/useInstitutions';
 import Link from 'next/link';
-import { ArrowRight, Trophy, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, Trophy, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ScorePie from '@/components/ui/ScorePie';
 
-interface LiveRankingsProps {
-    schools: Institution[];
-    preschools: Institution[];
-    consultancies: Institution[];
-    colleges: Institution[];
-    trainingCenters: Institution[];
-}
-
 type Category = 'PRESCHOOL' | 'SCHOOL' | 'COLLEGE' | 'CONSULTANCY' | 'TRAINING_CENTER';
 
-export default function LiveRankings({ schools, preschools, consultancies, colleges, trainingCenters }: LiveRankingsProps) {
-    const [activeCategory, setActiveCategory] = useState<Category>('CONSULTANCY');
+export default function LiveRankings() {
+    const { data: allInstitutions, loading, error } = useInstitutions();
+    const [activeCategory, setActiveCategory] = useState<Category>('SCHOOL');
     const [isPaused, setIsPaused] = useState(false);
 
     const categories: { id: Category; label: string }[] = [
-        { id: 'CONSULTANCY', label: 'Top Consultancies' },
-        { id: 'PRESCHOOL', label: 'Top Preschools' },
         { id: 'SCHOOL', label: 'Top Schools' },
+        { id: 'PRESCHOOL', label: 'Top Preschools' },
         { id: 'COLLEGE', label: 'Top Colleges' },
+        { id: 'CONSULTANCY', label: 'Top Consultancies' },
         { id: 'TRAINING_CENTER', label: 'Top Training Centers' },
     ];
 
@@ -47,24 +41,38 @@ export default function LiveRankings({ schools, preschools, consultancies, colle
 
     // Auto-rotation logic
     useEffect(() => {
-        if (isPaused) return;
+        if (isPaused || loading) return;
 
         const interval = setInterval(() => {
             handleNext();
         }, 5000); // 5 seconds rotation
 
         return () => clearInterval(interval);
-    }, [isPaused, activeCategory]);
+    }, [isPaused, activeCategory, loading]);
 
-    const getData = () => {
-        switch (activeCategory) {
-            case 'CONSULTANCY': return consultancies;
-            case 'PRESCHOOL': return preschools;
-            case 'SCHOOL': return schools;
-            case 'COLLEGE': return colleges;
-            case 'TRAINING_CENTER': return trainingCenters;
-        }
-    };
+    const activeData = useMemo(() => {
+        return allInstitutions
+            .filter(inst => inst.type === activeCategory)
+            .sort((a, b) => (b.eduRankScore || 0) - (a.eduRankScore || 0))
+            .slice(0, 10);
+    }, [allInstitutions, activeCategory]);
+
+    if (loading) {
+        return (
+            <div className="container mx-auto px-4 py-20 flex flex-col items-center justify-center min-h-[400px]">
+                <Loader2 className="w-10 h-10 text-blue-500 animate-spin mb-4" />
+                <p className="text-muted-foreground">Loading expert rankings...</p>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="container mx-auto px-4 py-20 text-center">
+                <p className="text-red-500">Failed to load rankings</p>
+            </div>
+        );
+    }
 
     return (
         <section className="container mx-auto px-4 py-20 overflow-hidden" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
@@ -147,14 +155,14 @@ export default function LiveRankings({ schools, preschools, consultancies, colle
                     >
                         {/* Left Column 1-5 */}
                         <div className="space-y-3">
-                            {getData().slice(0, 5).map((inst, index) => (
+                            {activeData.slice(0, 5).map((inst, index) => (
                                 <RankingListItem key={inst.id} institution={inst} rank={index + 1} />
                             ))}
                         </div>
 
                         {/* Right Column 6-10 */}
                         <div className="space-y-3">
-                            {getData().slice(5, 10).map((inst, index) => (
+                            {activeData.slice(5, 10).map((inst, index) => (
                                 <RankingListItem key={inst.id} institution={inst} rank={index + 6} />
                             ))}
                         </div>
@@ -186,7 +194,7 @@ export default function LiveRankings({ schools, preschools, consultancies, colle
 function RankingListItem({ institution, rank }: { institution: Institution; rank: number }) {
     return (
         <Link
-            href={`/institution/${institution.id}`}
+            href={`/institution/${institution.slug}`}
             className="flex items-center gap-4 py-3 px-4 bg-card border border-border rounded-xl hover:border-primary/20 hover:bg-muted transition-all group shadow-sm"
         >
             {/* Rank Badge */}

@@ -1,5 +1,5 @@
 
-import { mockInstitutions } from '@/lib/data';
+import { getInstitutionsServer } from '@/lib/data';
 import InstitutionDetail from '@/components/features/InstitutionDetail';
 import SchemaOrg from '@/components/seo/SchemaOrg';
 import { Metadata } from 'next';
@@ -11,8 +11,9 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-    const { id } = await params;
-    const institution = mockInstitutions.find((i) => i.id === id);
+    const { id: slug } = await params;
+    const institutions = await getInstitutionsServer();
+    const institution = institutions.find((i) => i.slug === slug || i.id === slug);
 
     if (!institution) {
         return {
@@ -28,9 +29,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function Page({ params }: PageProps) {
-    const { id } = await params;
-    console.log('DEBUG: Page id:', id);
-    const institution = mockInstitutions.find((i) => i.id === id);
+    const { id: slug } = await params;
+    console.log('DEBUG: Page id (slug):', slug);
+    const institutions = await getInstitutionsServer();
+    const institution = institutions.find((i) => i.slug === slug || i.id === slug);
 
     if (!institution) {
         notFound();
