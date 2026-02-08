@@ -99,7 +99,7 @@ export default function ClaimForm() {
                     <div className="relative">
                         <Search className="absolute left-4 top-3.5 h-5 w-5 text-zinc-400" />
                         <input
-                            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl py-3 pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                            className="w-full bg-zinc-950/50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-700 rounded-xl py-3 pl-12 pr-4 outline-none focus:ring-2 focus:ring-blue-500 transition-all text-black dark:text-white placeholder:text-zinc-500"
                             placeholder="Enter institution name..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}

@@ -153,7 +153,7 @@ function SearchContent() {
                                 <input
                                     type="text"
                                     placeholder="Search by name, location, or facility..."
-                                    className="w-full bg-muted border border-border rounded-lg py-2.5 pl-10 pr-4 text-sm focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all"
+                                    className="w-full bg-zinc-900/50 border border-zinc-700 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all text-white placeholder:text-zinc-500"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
